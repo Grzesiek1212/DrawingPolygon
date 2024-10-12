@@ -23,7 +23,7 @@ namespace Gk1
         public void AddVertex(Vertex v)
         {
             Vertices.Add(v);
-            UpdateEdges();
+            UpdateEdges(-1);
         }
 
         public void RemoveVertexAt(int index)
@@ -31,7 +31,7 @@ namespace Gk1
             if(index >= 0 && index < Vertices.Count)
             {
                 Vertices.RemoveAt(index);
-                UpdateEdges();
+                UpdateEdges(index);
                 if(Vertices.Count < 3)
                 {
                     Vertices.Clear();
@@ -41,27 +41,49 @@ namespace Gk1
             }
         }
 
-        public void UpdateEdges()
+        public void UpdateEdges(int index)
         {
             List<Edge> OldEdges = Edges.ToList();
             Edges.Clear();
             for (int i = 0; i < Vertices.Count - 1; i++)
             {
-                Edges.Add(new Edge(Vertices[i], Vertices[i + 1]));
-                if (isclosed)
-                {
-                    Edges[i].Constraint = OldEdges[i].Constraint;
-                    Edges[i].FixedLength = OldEdges[i].FixedLength;
-                }
-                 
+                Edges.Add(new Edge(Vertices[i], Vertices[i + 1]));                      
             }
-
             if (isclosed && Vertices.Count > 2)
             {
                 // Zamykamy wielokąt (dodajemy krawędź między ostatnim i pierwszym wierzchołkiem)
                 Edges.Add(new Edge(Vertices[Vertices.Count - 1], Vertices[0]));
             }
 
+            if(OldEdges.Count  == Edges.Count) // tu jeżeli przesuneliśmy cały wielokąt
+            {
+                for(int i = 0;i < OldEdges.Count;i++)
+                {
+                    Edges[i].Constraint = OldEdges[i].Constraint;
+                    Edges[i].FixedLength = OldEdges[i].FixedLength;
+                }
+            }
+            else if(OldEdges.Count -1 == Edges.Count)
+            {
+                int j = index + 1;
+                for(int i = 0;i < Edges.Count;i++) 
+                {
+                    if (i < index - 1)
+                    {
+                        Edges[i].Constraint = OldEdges[i].Constraint;
+                        Edges[i].FixedLength = OldEdges[i].FixedLength;
+                    }
+                    else if (i == index - 1) continue;
+                    else
+                    {
+                        Edges[i].Constraint = OldEdges[j].Constraint;
+                        Edges[i].FixedLength = OldEdges[j].FixedLength;
+                        j++;
+                    }
+                }
+               
+                
+            }
            
         }
 
@@ -69,8 +91,8 @@ namespace Gk1
         {
             if (edgeIndex < 0 || edgeIndex >= Edges.Count) return false;
 
-            Edge previousEdge = edgeIndex > 0 ? Edges[edgeIndex - 1] : null;
-            Edge nextEdge = edgeIndex < Edges.Count - 1 ? Edges[edgeIndex + 1] : null;
+            Edge previousEdge = edgeIndex > 0 ? Edges[edgeIndex - 1] : Edges[Edges.Count-1];
+            Edge nextEdge = edgeIndex < Edges.Count - 1 ? Edges[edgeIndex + 1] : Edges[0];
 
             return Edges[edgeIndex].SetConstraint(constraint, previousEdge, nextEdge);
         }
@@ -95,7 +117,7 @@ namespace Gk1
             if (Vertices.Count > 2)
             {
                 isclosed = true;
-                UpdateEdges();
+                UpdateEdges(-1);
             }
         }
     }

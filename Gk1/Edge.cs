@@ -11,7 +11,8 @@ namespace Gk1
         None,
         Horizontal,
         Vertical,
-        FixedLength
+        FixedLength,
+        Bezier
     }
     public class Edge
     {
@@ -19,13 +20,15 @@ namespace Gk1
         public Vertex End { get; set; }
         public EdgeConstraint Constraint { get; set; }
         public float? FixedLength { get; set; } // optional for fixed edge
-
+        public Vertex ControlPoint1 { get; set; }     
+        public Vertex ControlPoint2 { get; set; }
         public Edge(Vertex start, Vertex end)
         {
             Start = start;
             End = end;
             Constraint = EdgeConstraint.None;
             FixedLength = null;
+
         }
         public double Length()
         {
@@ -86,6 +89,57 @@ namespace Gk1
             double scale = newlength / currentLength;
             End.X = (int)(Start.X + (End.X - Start.X) * scale);
             End.Y = (int)(Start.Y + (End.Y - Start.Y) * scale);
+        }
+
+        public void Draw(Graphics g)
+        {
+            // Ustawienie koloru w zależności od typu ograniczenia
+            Color color = Color.Black; // Domyślny kolor
+            switch (Constraint)
+            {
+                case EdgeConstraint.Horizontal:
+                    color = Color.Blue; // Kolor dla poziomej
+                    break;
+                case EdgeConstraint.Vertical:
+                    color = Color.Green; // Kolor dla pionowej
+                    break;
+                case EdgeConstraint.FixedLength:
+                    color = Color.Red; // Kolor dla stałej długości
+                    break;
+                case EdgeConstraint.Bezier:
+                    DrawBezier(g); // Rysowanie krzywej Béziera
+                    return; // Zakończ metodę, gdy rysujemy Béziera
+            }
+
+            // Rysowanie linii dla krawędzi
+            using (Pen pen = new Pen(color, 2)) // Grubość linii 2
+            {
+                g.DrawLine(pen, Start.ToPoint(), End.ToPoint());
+            }
+
+            // Jeśli krawędź ma punkty kontrolne, narysuj je
+            if (Constraint == EdgeConstraint.Bezier)
+            {
+                g.FillEllipse(Brushes.Blue, ControlPoint1.X - 3, ControlPoint1.Y - 3, 6, 6); // Punkt kontrolny 1
+                g.FillEllipse(Brushes.Blue, ControlPoint2.X - 3, ControlPoint2.Y - 3, 6, 6); // Punkt kontrolny 2
+            }
+        }
+
+        private void DrawBezier(Graphics g)
+        {
+            // Rysowanie krzywej Béziera
+            using (Pen pen = new Pen(Color.Blue, 2))
+            {
+                // Używamy krzywej Béziera z punktów kontrolnych
+                Point[] bezierPoints = new Point[]
+                {
+                    Start.ToPoint(),
+                    ControlPoint1.ToPoint(),
+                    ControlPoint2.ToPoint(),
+                    End.ToPoint()
+                };
+                g.DrawBezier(pen, Start.ToPoint(), ControlPoint1.ToPoint(), ControlPoint2.ToPoint(), End.ToPoint());
+            }
         }
 
     }
