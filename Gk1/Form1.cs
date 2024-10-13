@@ -252,7 +252,7 @@ namespace Gk1
                     {
                         isPolygonClosed = false;
                     }
-
+                    
                     drawingPanel.Invalidate();
                     return true;
                 }

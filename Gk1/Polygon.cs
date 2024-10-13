@@ -82,8 +82,8 @@ namespace Gk1
                     {
                         Edges[i].Constraint = OldEdges[j].Constraint;
                         Edges[i].FixedLength = OldEdges[j].FixedLength;
-                        Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
-                        Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
+                        Edges[i].ControlPoint1 = OldEdges[j].ControlPoint1;
+                        Edges[i].ControlPoint2 = OldEdges[j].ControlPoint2;
                         j++;
                     }
                 }
