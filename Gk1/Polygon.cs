@@ -25,7 +25,6 @@ namespace Gk1
             Vertices.Add(v);
             UpdateEdges(-1);
         }
-
         public void RemoveVertexAt(int index)
         {
             if(index >= 0 && index < Vertices.Count)
@@ -40,7 +39,6 @@ namespace Gk1
                 }
             }
         }
-
         public void UpdateEdges(int index)
         {
             List<Edge> OldEdges = Edges.ToList();
@@ -92,7 +90,6 @@ namespace Gk1
             }
            
         }
-
         public bool SetEdgeConstraint(int edgeIndex, EdgeConstraint constraint)
         {
             if (edgeIndex < 0 || edgeIndex >= Edges.Count) return false;

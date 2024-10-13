@@ -406,7 +406,7 @@ namespace Gk1
                 MessageBox.Show("Cannot set this constraint because this edge has constraint.", "Constraint Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            var prompt = new PromptForm("Enter fixed length:"); // Przyk³adowy formularz do wprowadzania d³ugoœci
+            var prompt = new PromptForm("Enter fixed length:", (float)Vertex.Distance(polygon.Edges[edgeIndex].Start, polygon.Edges[edgeIndex].End)); // Przyk³adowy formularz do wprowadzania d³ugoœci
             if (prompt.ShowDialog() == DialogResult.OK)
             {
                 float length;
@@ -427,6 +427,11 @@ namespace Gk1
         }
         private void SetBezierEdge(int edgeIndex)
         {
+            if (polygon.Edges[edgeIndex].Constraint != EdgeConstraint.None) 
+            {
+                MessageBox.Show("Cannot set this constraint because this edge has constraint.", "Constraint Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             var edge = polygon.Edges[edgeIndex];
             edge.Constraint = EdgeConstraint.Bezier;
 
@@ -439,6 +444,11 @@ namespace Gk1
         }
         private void UnsetBezierEdge(int edgeIndex)
         {
+            if (polygon.Edges[edgeIndex].Constraint != EdgeConstraint.Bezier)
+            {
+                MessageBox.Show("Cannot set this constraint because this edge has not be Bezier line.", "Constraint Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             polygon.Edges[edgeIndex].RemoveConstraint();
             drawingPanel.Invalidate();
         }

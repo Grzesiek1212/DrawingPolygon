@@ -14,11 +14,12 @@ namespace Gk1
 
         public string InputValue { get; private set; }
 
-        public PromptForm(string prompt)
+        public PromptForm(string prompt, float length)
         {
             // Inicjalizacja kontrolek
             this.Text = prompt;
             inputTextBox = new TextBox { Width = 300 };
+            inputTextBox.Text = length.ToString();
             okButton = new Button { Text = "OK", DialogResult = DialogResult.OK };
             cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
 
