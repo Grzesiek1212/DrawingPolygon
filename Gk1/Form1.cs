@@ -136,6 +136,16 @@ namespace Gk1
                 {
                     g.FillEllipse(Brushes.Blue, edge.ControlPoint1.X - 3, edge.ControlPoint1.Y - 3, 6, 6); // Punkt kontrolny 1
                     g.FillEllipse(Brushes.Blue, edge.ControlPoint2.X - 3, edge.ControlPoint2.Y - 3, 6, 6); // Punkt kontrolny 2
+
+                    // Rysowanie linii przerywanych miêdzy wierzcho³kami a punktami kontrolnymi
+                    using (Pen dashedPen = new Pen(Color.Gray, 2)) 
+                    {
+                        dashedPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Custom;
+                        dashedPen.DashPattern = new float[] { 8, 4 };
+                        g.DrawLine(dashedPen, edge.Start.ToPoint(), edge.ControlPoint1.ToPoint());
+                        g.DrawLine(dashedPen, edge.End.ToPoint(), edge.ControlPoint2.ToPoint());
+                        g.DrawLine(dashedPen, edge.ControlPoint1.ToPoint(), edge.ControlPoint2.ToPoint());
+                    }
                 }
             }
 
@@ -170,6 +180,18 @@ namespace Gk1
                 {
                     vertex.X += dx;
                     vertex.Y += dy;
+                }
+
+                foreach (var edge in polygon.Edges)
+                {
+                    if (edge.Constraint == EdgeConstraint.Bezier)
+                    {
+                        // Przesuwamy punkty kontrolne krzywej Béziera
+                        edge.ControlPoint1.X += dx;
+                        edge.ControlPoint1.Y += dy;
+                        edge.ControlPoint2.X += dx;
+                        edge.ControlPoint2.Y += dy;
+                    }
                 }
 
                 lastMousePosition = e.Location;

@@ -130,14 +130,6 @@ namespace Gk1
             // Rysowanie krzywej Béziera
             using (Pen pen = new Pen(Color.Blue, 2))
             {
-                // Używamy krzywej Béziera z punktów kontrolnych
-                Point[] bezierPoints = new Point[]
-                {
-                    Start.ToPoint(),
-                    ControlPoint1.ToPoint(),
-                    ControlPoint2.ToPoint(),
-                    End.ToPoint()
-                };
                 g.DrawBezier(pen, Start.ToPoint(), ControlPoint1.ToPoint(), ControlPoint2.ToPoint(), End.ToPoint());
             }
         }

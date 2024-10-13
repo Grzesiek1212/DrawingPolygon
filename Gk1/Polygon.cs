@@ -61,6 +61,8 @@ namespace Gk1
                 {
                     Edges[i].Constraint = OldEdges[i].Constraint;
                     Edges[i].FixedLength = OldEdges[i].FixedLength;
+                    Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
+                    Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
                 }
             }
             else if(OldEdges.Count -1 == Edges.Count)
@@ -72,12 +74,16 @@ namespace Gk1
                     {
                         Edges[i].Constraint = OldEdges[i].Constraint;
                         Edges[i].FixedLength = OldEdges[i].FixedLength;
+                        Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
+                        Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
                     }
                     else if (i == index - 1) continue;
                     else
                     {
                         Edges[i].Constraint = OldEdges[j].Constraint;
                         Edges[i].FixedLength = OldEdges[j].FixedLength;
+                        Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
+                        Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
                         j++;
                     }
                 }
