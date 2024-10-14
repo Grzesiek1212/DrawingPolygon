@@ -33,7 +33,25 @@ namespace Gk1
         {
             if (e.Button == MouseButtons.Right)
             {
-                if(deleteVertex(e))return; // tu trzeba dorobiæ ze jak skasuje to dalej nie idzie
+
+                // Sprawdzamy, czy klikniêto na wierzcho³ek i czy jest to wierzcho³ek zwi¹zany z krzyw¹ Béziera
+                for (int i = 0; i < polygon.Vertices.Count; i++)
+                {
+                    if (IsPointNearVertex(new Point(e.X, e.Y), polygon.Vertices[i].ToPoint()))
+                    {
+                        // Sprawdzamy, czy wierzcho³ek nale¿y do krawêdzi Béziera
+                        if (IsVertexPartOfBezierEdge(i))
+                        {
+                            ShowVertexContextMenu(e,i); // Wyœwietlamy menu ustawienia ci¹g³oœci
+                            return;
+                        }
+                        else
+                        {
+                            if (deleteVertex(e)) return; // Usuwamy wierzcho³ek, jeœli nie nale¿y do Béziera
+                        }
+                    }
+                }
+
                 Edge edge = WhichEdgeisnear(e);
                 if (edge != null) ShowEdgeContextMenu(e);
                 return;
@@ -453,6 +471,37 @@ namespace Gk1
             drawingPanel.Invalidate();
         }
 
+        // ustawianie relacji na wierzcho³kach
+        private void ShowVertexContextMenu(MouseEventArgs e, int vertexIndex)
+        {
+            ContextMenuStrip contextMenu = new ContextMenuStrip();
+
+            contextMenu.Items.Add("Set Continuity G0", null, (sender, args) => SetVertexContinuity(vertexIndex, ContinuityType.G0));
+            contextMenu.Items.Add("Set Continuity G1", null, (sender, args) => SetVertexContinuity(vertexIndex, ContinuityType.G1));
+            contextMenu.Items.Add("Set Continuity C1", null, (sender, args) => SetVertexContinuity(vertexIndex, ContinuityType.C1));
+            contextMenu.Items.Add("Delete vertex", null, (sender, args) => deleteVertex(e));
+            contextMenu.Show(drawingPanel, new Point(e.X, e.Y));
+        }
+        private void SetVertexContinuity(int vertexIndex, ContinuityType continuity)
+        {
+            MessageBox.Show("jest Gut.", "Constraint Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+
+        }
+        private bool IsVertexPartOfBezierEdge(int vertexIndex)
+        {
+            foreach (var edge in polygon.Edges)
+            {
+                if (edge.Constraint == EdgeConstraint.Bezier)
+                {
+                    if (edge.Start == polygon.Vertices[vertexIndex] || edge.End == polygon.Vertices[vertexIndex])
+                    {
+                        return true; // Wierzcho³ek jest czêœci¹ krzywej Béziera
+                    }
+                }
+            }
+            return false;
+        }
 
     }
 }
