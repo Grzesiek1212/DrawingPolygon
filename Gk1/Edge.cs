@@ -22,13 +22,16 @@ namespace Gk1
         public float? FixedLength { get; set; } // optional for fixed edge
         public Vertex ControlPoint1 { get; set; }     
         public Vertex ControlPoint2 { get; set; }
+        public ContinuityType StartContinuity { get; set; }
+        public ContinuityType EndContinuity { get; set; }
+
+
         public Edge(Vertex start, Vertex end)
         {
             Start = start;
             End = end;
             Constraint = EdgeConstraint.None;
             FixedLength = null;
-
         }
         public double Length()
         {
@@ -98,7 +101,7 @@ namespace Gk1
             switch (Constraint)
             {
                 case EdgeConstraint.Horizontal:
-                    color = Color.Blue; // Kolor dla poziomej
+                    color = Color.Brown; // Kolor dla poziomej
                     break;
                 case EdgeConstraint.Vertical:
                     color = Color.Green; // Kolor dla pionowej
@@ -133,6 +136,5 @@ namespace Gk1
                 g.DrawBezier(pen, Start.ToPoint(), ControlPoint1.ToPoint(), ControlPoint2.ToPoint(), End.ToPoint());
             }
         }
-
     }
 }

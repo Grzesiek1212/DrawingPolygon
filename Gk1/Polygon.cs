@@ -61,6 +61,8 @@ namespace Gk1
                     Edges[i].FixedLength = OldEdges[i].FixedLength;
                     Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
                     Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
+                    Edges[i].StartContinuity = OldEdges[i].StartContinuity;
+                    Edges[i].EndContinuity = OldEdges[i].EndContinuity;
                 }
             }
             else if(OldEdges.Count -1 == Edges.Count)
@@ -74,6 +76,8 @@ namespace Gk1
                         Edges[i].FixedLength = OldEdges[i].FixedLength;
                         Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
                         Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
+                        Edges[i].StartContinuity = OldEdges[i].StartContinuity;
+                        Edges[i].EndContinuity = OldEdges[i].EndContinuity;
                     }
                     else if (i == index - 1) continue;
                     else
@@ -82,6 +86,8 @@ namespace Gk1
                         Edges[i].FixedLength = OldEdges[j].FixedLength;
                         Edges[i].ControlPoint1 = OldEdges[j].ControlPoint1;
                         Edges[i].ControlPoint2 = OldEdges[j].ControlPoint2;
+                        Edges[i].StartContinuity = OldEdges[j].StartContinuity;
+                        Edges[i].EndContinuity = OldEdges[j].EndContinuity;
                         j++;
                     }
                 }
@@ -122,6 +128,30 @@ namespace Gk1
                 isclosed = true;
                 UpdateEdges(-1);
             }
+        }
+
+        internal Edge? GetIncomingEdge(int vertexIndex)
+        {
+            for(int i = 0; i < Edges.Count; i++) 
+            {
+                if (Edges[i].End == Vertices[vertexIndex])
+                {
+                    return Edges[i];
+                }
+            }
+            return null;
+        }
+
+        internal Edge? GetOutgoingEdge(int vertexIndex)
+        {
+            for (int i = 0; i < Edges.Count; i++)
+            {
+                if (Edges[i].Start == Vertices[vertexIndex])
+                {
+                    return Edges[i];
+                }
+            }
+            return null;
         }
     }
 }

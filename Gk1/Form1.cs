@@ -1,5 +1,6 @@
 using System.Windows.Forms;
 using System.Drawing;
+using System.Numerics;
 namespace Gk1
 {
     public partial class PolygonEditor : Form
@@ -178,13 +179,24 @@ namespace Gk1
             // Jeœli przeci¹gamy wierzcho³ek
             if (draggingVertex && draggedVertexIndex != -1)
             {
-                polygon.Vertices[draggedVertexIndex].X = e.X;
-                polygon.Vertices[draggedVertexIndex].Y = e.Y;
+                var draggedVertex = polygon.Vertices[draggedVertexIndex];
+
+                // SprawdŸ ci¹g³oœæ wierzcho³ka
+                if (draggedVertex.Continuity == ContinuityType.G1 || draggedVertex.Continuity == ContinuityType.C1)
+                {
+                    // Przesuwaj wierzcho³ek z ograniczeniem ci¹g³oœci
+                    ApplyContinuityConstraints(draggedVertexIndex, e.Location);
+                }
+                else
+                {
+                    // Standardowe przesuwanie
+                    draggedVertex.X = e.X;
+                    draggedVertex.Y = e.Y;
+                }
 
                 polygon.UpdateEdges(-1);  // Aktualizacja krawêdzi
                 polygon.ApplyConstraints();
                 drawingPanel.Invalidate();
-                return;
             }
 
             // Jeœli przeci¹gamy ca³y wielok¹t
@@ -352,26 +364,40 @@ namespace Gk1
         }
         private bool IsPointInsidePolygon(Point point)
         {
+            // Sprawdzenie, czy wielok¹t jest zamkniêty
             if (!isPolygonClosed) return false;
-            int j = polygon.Vertices.Count - 1;
-            bool inside = false;
 
-            for (int i = 0; i < polygon.Vertices.Count; i++)
+            // Liczba wierzcho³ków wielok¹ta
+            int vertexCount = polygon.Vertices.Count;
+
+            // Zmienna do przechowywania liczby przeciêæ
+            int intersections = 0;
+
+            // Przechodzimy przez ka¿d¹ krawêdŸ wielok¹ta
+            for (int i = 0, j = vertexCount - 1; i < vertexCount; j = i++)
             {
-                if (polygon.Vertices[i].Y < point.Y && polygon.Vertices[j].Y >= point.Y ||
-                    polygon.Vertices[j].Y < point.Y && polygon.Vertices[i].Y >= point.Y)
+                Point vertex1 = new Point(polygon.Vertices[i].X, polygon.Vertices[i].Y); // Bie¿¹cy wierzcho³ek
+                Point vertex2 = new Point(polygon.Vertices[j].X, polygon.Vertices[j].Y); // Poprzedni wierzcho³ek (zamykaj¹cy krawêdŸ)
+
+                // Sprawdzamy, czy promieñ przecina krawêdŸ
+                if ((vertex1.Y > point.Y) != (vertex2.Y > point.Y)) // Jeden wierzcho³ek nad punktem, drugi pod nim
                 {
-                    if (polygon.Vertices[i].X + (point.Y - polygon.Vertices[i].Y) / (polygon.Vertices[j].Y - polygon.Vertices[i].Y) *
-                        (polygon.Vertices[j].X - polygon.Vertices[i].X) < point.X)
+                    // Obliczamy punkt przeciêcia promienia z krawêdzi¹
+                    double intersectionX = vertex1.X + (point.Y - vertex1.Y) * (vertex2.X - vertex1.X) / (vertex2.Y - vertex1.Y);
+
+                    // Sprawdzamy, czy punkt przeciêcia znajduje siê po prawej stronie punktu
+                    if (intersectionX > point.X)
                     {
-                        inside = !inside;
+                        // Zliczamy przeciêcie
+                        intersections++;
                     }
                 }
-                j = i;
             }
 
-            return inside;
+            // Jeœli liczba przeciêæ jest nieparzysta, punkt jest wewn¹trz
+            return (intersections % 2 != 0);
         }
+
 
 
         // pokazywanie menu
@@ -457,6 +483,8 @@ namespace Gk1
             Point mid = edge.MidPoint();
             edge.ControlPoint1 = new Vertex(mid.X - 30, mid.Y - 30);
             edge.ControlPoint2 = new Vertex(mid.X + 30, mid.Y + 30);
+            edge.StartContinuity = ContinuityType.C1;
+            edge.EndContinuity = ContinuityType.C1;
 
             drawingPanel.Invalidate();
         }
@@ -471,6 +499,7 @@ namespace Gk1
             drawingPanel.Invalidate();
         }
 
+        
         // ustawianie relacji na wierzcho³kach
         private void ShowVertexContextMenu(MouseEventArgs e, int vertexIndex)
         {
@@ -484,9 +513,27 @@ namespace Gk1
         }
         private void SetVertexContinuity(int vertexIndex, ContinuityType continuity)
         {
-            MessageBox.Show("jest Gut.", "Constraint Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
+            // Sprawdzenie, czy wierzcho³ek nale¿y do krawêdzi Béziera
+            if (!IsVertexPartOfBezierEdge(vertexIndex))
+            {
+                MessageBox.Show("The vertex is not part of a Bézier edge.", "Constraint Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
+            // Ustawienie ci¹g³oœci dla wierzcho³ka
+            var vertex = polygon.Vertices[vertexIndex];
+            vertex.Continuity = continuity; // Zak³adam, ¿e wierzcho³ek ma w³aœciwoœæ Continuity
+
+            // Przywracanie ci¹g³oœci, jeœli wierzcho³ek by³ przemieszczany
+            Point newLocation = vertex.ToPoint(); // Zak³adam, ¿e wierzcho³ek ma w³aœciwoœæ Position
+
+            ApplyContinuityConstraints(vertexIndex, newLocation);
+
+            // Opcjonalnie: informowanie u¿ytkownika o sukcesie
+            MessageBox.Show($"Continuity set to {continuity} for vertex {vertexIndex}.", "Continuity Set", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            polygon.UpdateEdges(-1);  // Aktualizacja krawêdzi
+            polygon.ApplyConstraints();
+            drawingPanel.Invalidate();
         }
         private bool IsVertexPartOfBezierEdge(int vertexIndex)
         {
@@ -503,5 +550,142 @@ namespace Gk1
             return false;
         }
 
+        private void ApplyContinuityConstraints(int vertexIndex, Point newLocation)
+        {
+            var vertex = polygon.Vertices[vertexIndex];
+            var incomingEdge = polygon.GetIncomingEdge(vertexIndex);
+            var outgoingEdge = polygon.GetOutgoingEdge(vertexIndex);
+            if (incomingEdge == null || outgoingEdge == null) return;
+            
+            if (vertex.Continuity == ContinuityType.G1)
+            {
+                // Przesuwamy wierzcho³ek tak, aby zachowaæ stycznoœæ jednostkow¹
+                PreserveG1Continuity(incomingEdge, outgoingEdge, newLocation);
+            }
+            else if (vertex.Continuity == ContinuityType.C1)
+            {
+                // Przesuwamy wierzcho³ek tak, aby zachowaæ ci¹g³oœæ wektorow¹
+                PreserveC1Continuity(incomingEdge, outgoingEdge, newLocation);
+            }
+
+            vertex.X = newLocation.X;
+            vertex.Y = newLocation.Y;
+        }
+
+        private void PreserveG1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
+        {
+            // Przypisz now¹ lokalizacjê do wierzcho³ka, gdzie styka siê incomingEdge i outgoingEdge
+            incomingEdge.End = ToVertex(newLocation);
+            outgoingEdge.Start = ToVertex(newLocation);
+
+            // Oblicz wektor styczny dla incomingEdge
+            Point incomingTangent;
+
+            if (incomingEdge.Constraint == EdgeConstraint.Bezier)
+            {
+                // Jeœli incomingEdge jest krzyw¹ Béziera, oblicz wektor styczny z ostatniego punktu kontrolnego
+                Point p1 = incomingEdge.End.ToPoint(); // Punkt koñcowy incomingEdge
+                Point p2 = incomingEdge.ControlPoint2.ToPoint(); // Ostatni punkt kontrolny incomingEdge
+                incomingTangent = new Point(p1.X - p2.X, p1.Y - p2.Y); // Wektor styczny
+            }
+            else
+            {
+                // Jeœli incomingEdge jest prost¹, oblicz wektor styczny bezpoœrednio z wierzcho³ków
+                Point p1 = incomingEdge.Start.ToPoint(); // Punkt pocz¹tkowy incomingEdge
+                Point p2 = incomingEdge.End.ToPoint(); // Punkt koñcowy incomingEdge
+                incomingTangent = new Point(p2.X - p1.X, p2.Y - p1.Y); // Wektor styczny
+            }
+
+            // Oblicz nowy punkt kontrolny dla outgoingEdge, jeœli jest Bézierem
+            if (outgoingEdge.Constraint == EdgeConstraint.Bezier)
+            {
+                Point p3 = outgoingEdge.Start.ToPoint(); // Pocz¹tek outgoingEdge (który jest newLocation)
+
+                // D³ugoœæ wektora stycznego outgoingEdge powinna odpowiadaæ incomingEdge
+                outgoingEdge.ControlPoint1 = new Vertex(p3.X + incomingTangent.X, p3.Y + incomingTangent.Y);
+            }
+            else
+            {
+                // Jeœli outgoingEdge jest prost¹, upewnij siê, ¿e kierunek outgoingEdge jest zgodny z incomingEdge
+                Point p3 = outgoingEdge.End.ToPoint(); // Koniec outgoingEdge
+
+                // Upewnij siê, ¿e wektor outgoingEdge ma ten sam kierunek co incomingTangent
+                Point outgoingTangent = new Point(p3.X - newLocation.X, p3.Y - newLocation.Y);
+
+                // Skaluje outgoingTangent do d³ugoœci incomingTangent
+                double lengthRatio = CalculateVectorLength(incomingTangent) / CalculateVectorLength(outgoingTangent);
+                outgoingEdge.End = new Vertex((int)(newLocation.X + outgoingTangent.X * lengthRatio), (int)(newLocation.Y + outgoingTangent.Y * lengthRatio));
+            }
+        }
+
+
+        private void PreserveC1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
+        {
+            // Aktualizujemy pocz¹tek outgoingEdge na now¹ lokalizacjê
+            outgoingEdge.Start = ToVertex(newLocation);
+
+            // Sprawdzenie, czy incomingEdge jest krzyw¹ Béziera
+            if (incomingEdge.Constraint == EdgeConstraint.Bezier)
+            {
+                if (outgoingEdge.Constraint == EdgeConstraint.Bezier)
+                {
+                    // Obie krawêdzie s¹ krzywymi Béziera: P4 - P3 = P2 - P1
+                    Point p1 = incomingEdge.End.ToPoint();  // Punkt koñcowy incomingEdge (P1)
+                    Point p2 = incomingEdge.ControlPoint2.ToPoint();  // Ostatni punkt kontrolny incomingEdge (P2)
+                    Point p3 = outgoingEdge.ControlPoint1.ToPoint();  // Pierwszy punkt kontrolny outgoingEdge (P3)
+                    Point p4 = outgoingEdge.Start.ToPoint();  // Pocz¹tek outgoingEdge (P4)
+
+                    // Oblicz ró¿nicê P2 - P1
+                    Point delta = new Point(p2.X - p1.X, p2.Y - p1.Y);
+
+                    // Aktualizujemy punkt kontrolny outgoingEdge (P3)
+                    Point p = new Point(p4.X - delta.X, p4.Y - delta.Y);
+                    outgoingEdge.ControlPoint1 = ToVertex(p);
+                }
+                else
+                {
+                    // incomingEdge jest krzyw¹ Béziera, a outgoingEdge jest lini¹ prost¹
+                    Point a = outgoingEdge.Start.ToPoint();  // Pocz¹tek outgoingEdge (A)
+                    Point b = outgoingEdge.End.ToPoint();  // Koniec outgoingEdge (B)
+                    Point p1 = incomingEdge.End.ToPoint();  // Punkt koñcowy incomingEdge (P1)
+                    Point p2 = incomingEdge.ControlPoint2.ToPoint();  // Ostatni punkt kontrolny incomingEdge (P2)
+
+                    // Obliczamy 1/3 odcinka (B - A)
+                    Point delta = new Point((b.X - a.X) / 3, (b.Y - a.Y) / 3);
+
+                    // Aktualizujemy punkt kontrolny incomingEdge (P2)
+                    Point p = new Point(p1.X + delta.X, p1.Y + delta.Y);
+                    incomingEdge.ControlPoint2 = ToVertex(p1);
+                }
+            }
+            else if (outgoingEdge.Constraint == EdgeConstraint.Bezier)
+            {
+                // incomingEdge jest lini¹ prost¹, a outgoingEdge jest krzyw¹ Béziera
+                Point a = incomingEdge.Start.ToPoint();  // Pocz¹tek incomingEdge (A)
+                Point b = incomingEdge.End.ToPoint();  // Koniec incomingEdge (B)
+                Point p1 = outgoingEdge.Start.ToPoint();  // Pocz¹tek outgoingEdge (P1)
+                Point p2 = outgoingEdge.ControlPoint1.ToPoint();  // Pierwszy punkt kontrolny outgoingEdge (P2)
+
+                // Obliczamy 1/3 odcinka (B - A)
+                Point delta = new Point((b.X - a.X) / 3, (b.Y - a.Y) / 3);
+
+                // Aktualizujemy punkt kontrolny outgoingEdge (P2)
+                Point p = new Point(p1.X + delta.X, p1.Y + delta.Y);
+                outgoingEdge.ControlPoint1 = ToVertex(p);
+            }
+        }
+
+        public Vertex ToVertex(Point p)
+        {
+            return new Vertex(p.X, p.Y);
+        }
+
+        private double CalculateVectorLength(Point p)
+        {
+            return Math.Sqrt(p.X * p.X + p.Y * p.Y);
+        }
+
     }
+
+
 }

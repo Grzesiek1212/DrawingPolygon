@@ -15,11 +15,11 @@ namespace Gk1
     }
     public class Vertex
     {
-        public int X {  get; set; }
+        public int X { get; set; }
         public int Y { get; set; }
         public ContinuityType Continuity { get; set; } = ContinuityType.None;
 
-        public Vertex(int x, int y) 
+        public Vertex(int x, int y)
         {
             X = x;
             Y = y;
@@ -34,5 +34,7 @@ namespace Gk1
         {
             return Math.Sqrt(Math.Pow(b.X - a.X, 2) + Math.Pow(b.Y - a.Y, 2));
         }
+
+
     }
 }
