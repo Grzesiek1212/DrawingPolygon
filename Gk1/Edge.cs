@@ -50,6 +50,34 @@ namespace Gk1
             return new Point((Start.X + End.X)/2, (Start.Y + End.Y)/2);
         }
 
+
+        public bool IsPointNearEdge(Point clickPoint,int closeDistance)
+        {
+            double edgeLength = Math.Sqrt(Math.Pow(End.X - Start.X, 2) + Math.Pow(End.Y - Start.Y, 2));
+            if (edgeLength == 0) return false;
+
+            double edgeX = End.X - Start.X;
+            double edgeY = End.Y - Start.Y;
+
+            double normalX = -edgeY;
+            double normalY = edgeX;
+
+            double normalLength = Math.Sqrt(normalX * normalX + normalY * normalY);
+            normalX /= normalLength;
+            normalY /= normalLength;
+
+            double t = (clickPoint.X - Start.X) * edgeX + (clickPoint.Y - Start.Y) * edgeY;
+            t /= edgeLength * edgeLength;
+
+            Point closestPoint = new Point((int)(Start.X + t * edgeX), (int)(Start.Y + t * edgeY));
+
+            double distanceToEdge = Math.Sqrt(Math.Pow(clickPoint.X - closestPoint.X, 2) +
+                                               Math.Pow(clickPoint.Y - closestPoint.Y, 2));
+
+            return distanceToEdge < closeDistance;
+        }
+
+
         public void ApplyConstraint()
         {
             if(Constraint == EdgeConstraint.None) return;
@@ -117,7 +145,8 @@ namespace Gk1
             // Rysowanie linii dla krawędzi
             using (Pen pen = new Pen(color, 2)) // Grubość linii 2
             {
-                g.DrawLine(pen, Start.ToPoint(), End.ToPoint());
+                //g.DrawLine(pen, Start.ToPoint(), End.ToPoint());
+                DrawBresenhamLine(g, Start, End, color);
             }
 
             // Jeśli krawędź ma punkty kontrolne, narysuj je
@@ -134,6 +163,37 @@ namespace Gk1
             using (Pen pen = new Pen(Color.Blue, 2))
             {
                 g.DrawBezier(pen, Start.ToPoint(), ControlPoint1.ToPoint(), ControlPoint2.ToPoint(), End.ToPoint());
+            }
+        }
+
+        public void DrawBresenhamLine(Graphics g, Vertex a, Vertex b,Color color)
+        {
+            int x1 = a.X;
+            int x2 = b.X;
+            int y1 = a.Y;
+            int y2 = b.Y;
+
+            int dx = Math.Abs(x2 - x1);
+            int dy = Math.Abs(y2 - y1);
+            int sx = x1 < x2 ? 1 : -1;
+            int sy = y1 < y2 ? 1 : -1;
+            int err = dx - dy;
+
+            while(true)
+            {
+                g.FillRectangle(new SolidBrush(color),x1,y1,1,1);
+                if (x1 == x2 && y1 == y2) break;
+                int e = 2 * err;
+                if(e> -dy)
+                {
+                    err -= dy;
+                    x1 += sx;
+                }
+                if(e < dx)
+                {
+                    err += dx;
+                    y1 += sy;
+                }
             }
         }
     }
