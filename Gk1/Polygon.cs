@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms.VisualStyles;
 
 namespace Gk1
 {
@@ -116,11 +118,27 @@ namespace Gk1
                 Edges[edgeIndex].RemoveConstraint();
             }
         }
-        public void ApplyConstraints()
+        public void ApplyConstraints(int index)
         {
-            foreach (var edge in Edges)
+            bool[] edgevisited = new bool[Edges.Count];
+            ApplyConstraint(Edges[index],false);
+            edgevisited[index] = true;
+            int i = Countposition(index-1);
+            int j = Countposition(index + 1);
+            while (edgevisited[i]==false || edgevisited[j] == false)
             {
-                edge.ApplyConstraint();
+                if (edgevisited[i] == false)
+                {
+                    edgevisited[i] = true;
+                    ApplyConstraint(Edges[i], true);
+                }
+                if (edgevisited[j] == false) 
+                {
+                    edgevisited[j] = true;
+                    ApplyConstraint(Edges[j], false);
+                }
+                i = Countposition(i - 1);
+                j = Countposition(j + 1); ;
             }
         }
         public void ClosePolygon()
@@ -190,7 +208,9 @@ namespace Gk1
             var vertex = Vertices[vertexIndex];
             var incomingEdge = GetIncomingEdge(vertexIndex);
             var outgoingEdge = GetOutgoingEdge(vertexIndex);
-            if (incomingEdge == null || outgoingEdge == null) return;
+            if (incomingEdge == null && outgoingEdge == null) return;
+            if(incomingEdge == null && outgoingEdge != null) incomingEdge = Edges[Edges.IndexOf(outgoingEdge)-1];
+            if (incomingEdge != null && outgoingEdge == null) outgoingEdge = Edges[Edges.IndexOf(incomingEdge) + 1];
 
             if (vertex.Continuity == ContinuityType.G1)
             {
@@ -208,49 +228,11 @@ namespace Gk1
         }
         private void PreserveG1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
         {
-            // Przypisz nową lokalizację do wierzchołka, gdzie styka się incomingEdge i outgoingEdge
-            incomingEdge.End = ToVertex(newLocation);
-            outgoingEdge.Start = ToVertex(newLocation);
-
-            // Oblicz wektor styczny dla incomingEdge
-            Point incomingTangent;
-
-            if (incomingEdge.Constraint == EdgeConstraint.Bezier)
-            {
-                // Jeśli incomingEdge jest krzywą Béziera, oblicz wektor styczny z ostatniego punktu kontrolnego
-                Point p1 = incomingEdge.End.ToPoint(); // Punkt końcowy incomingEdge
-                Point p2 = incomingEdge.ControlPoint2.ToPoint(); // Ostatni punkt kontrolny incomingEdge
-                incomingTangent = new Point(p1.X - p2.X, p1.Y - p2.Y); // Wektor styczny
-            }
-            else
-            {
-                // Jeśli incomingEdge jest prostą, oblicz wektor styczny bezpośrednio z wierzchołków
-                Point p1 = incomingEdge.Start.ToPoint(); // Punkt początkowy incomingEdge
-                Point p2 = incomingEdge.End.ToPoint(); // Punkt końcowy incomingEdge
-                incomingTangent = new Point(p2.X - p1.X, p2.Y - p1.Y); // Wektor styczny
-            }
-
-            // Oblicz nowy punkt kontrolny dla outgoingEdge, jeśli jest Bézierem
-            if (outgoingEdge.Constraint == EdgeConstraint.Bezier)
-            {
-                Point p3 = outgoingEdge.Start.ToPoint(); // Początek outgoingEdge (który jest newLocation)
-
-                // Długość wektora stycznego outgoingEdge powinna odpowiadać incomingEdge
-                outgoingEdge.ControlPoint1 = new Vertex(p3.X + incomingTangent.X, p3.Y + incomingTangent.Y);
-            }
-            else
-            {
-                // Jeśli outgoingEdge jest prostą, upewnij się, że kierunek outgoingEdge jest zgodny z incomingEdge
-                Point p3 = outgoingEdge.End.ToPoint(); // Koniec outgoingEdge
-
-                // Upewnij się, że wektor outgoingEdge ma ten sam kierunek co incomingTangent
-                Point outgoingTangent = new Point(p3.X - newLocation.X, p3.Y - newLocation.Y);
-
-                // Skaluje outgoingTangent do długości incomingTangent
-                double lengthRatio = CalculateVectorLength(incomingTangent) / CalculateVectorLength(outgoingTangent);
-                outgoingEdge.End = new Vertex((int)(newLocation.X + outgoingTangent.X * lengthRatio), (int)(newLocation.Y + outgoingTangent.Y * lengthRatio));
-            }
+            // TODO do napisania
         }
+
+
+
         private void PreserveC1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
         {
             // Aktualizujemy początek outgoingEdge na nową lokalizację
@@ -286,8 +268,8 @@ namespace Gk1
                     Point delta = new Point((b.X - a.X) / 3, (b.Y - a.Y) / 3);
 
                     // Aktualizujemy punkt kontrolny incomingEdge (P2)
-                    Point p = new Point(p1.X + delta.X, p1.Y + delta.Y);
-                    incomingEdge.ControlPoint2 = ToVertex(p1);
+                    Point p = new Point(p1.X - delta.X, p1.Y - delta.Y);
+                    incomingEdge.ControlPoint2 = ToVertex(p);
                 }
             }
             else if (outgoingEdge.Constraint == EdgeConstraint.Bezier)
@@ -335,6 +317,41 @@ namespace Gk1
         private double CalculateVectorLength(Point p)
         {
             return Math.Sqrt(p.X * p.X + p.Y * p.Y);
+        }
+
+        public void ApplyConstraint(Edge edge,bool isStart)
+        {
+            if (edge.Constraint == EdgeConstraint.None) return;
+            if (edge.Constraint == EdgeConstraint.Horizontal)
+            {
+                _ = isStart ? edge.Start.Y = edge.End.Y : edge.End.Y = edge.Start.Y;
+            }
+            if (edge.Constraint == EdgeConstraint.Vertical)
+            {
+                _ = isStart ? edge.Start.X = edge.End.X : edge.End.X = edge.Start.X;
+            }
+            if (edge.Constraint == EdgeConstraint.FixedLength && edge.FixedLength.HasValue)
+            {
+                edge.ScaleToFixedLength(edge.FixedLength.Value, isStart);
+            }
+            if (edge.Constraint == EdgeConstraint.Bezier)
+            {
+                int index = Edges.IndexOf(edge);
+                if (!isStart) ApplyContinuityConstraints(index, Edges[Countposition(index-1)].End.ToPoint());
+                else ApplyContinuityConstraints(index+1, Edges[Countposition(index + 1)].Start.ToPoint());
+            }
+        }
+
+        public int Countposition(int index)
+        {
+            if(index >= Edges.Count) return index%Edges.Count;
+            if(index < 0) return (index + Edges.Count)%Edges.Count;
+            return index;
+        }
+        private Point NormalizeVector(Point vector)
+        {
+            double length = CalculateVectorLength(vector);
+            return new Point((int)(vector.X / length), (int)(vector.Y / length));
         }
     }
 }

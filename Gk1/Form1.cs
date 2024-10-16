@@ -69,8 +69,6 @@ namespace Gk1
                     }
                 }
 
-                addVertexOnTheHalf(e);
-
                 // sprawdzamy czy klilknelismy na wiercho³ek kontrolny
                 foreach (var edge in polygon.Edges)
                 {
@@ -179,16 +177,19 @@ namespace Gk1
                 {
                     // Przesuwaj wierzcho³ek z ograniczeniem ci¹g³oœci
                     polygon.ApplyContinuityConstraints(draggedVertexIndex, e.Location);
+                    polygon.UpdateEdges(-1);
+                    polygon.ApplyConstraints((draggedVertexIndex-1+polygon.Vertices.Count)%polygon.Vertices.Count);
                 }
                 else
                 {
                     // Standardowe przesuwanie
                     draggedVertex.X = e.X;
                     draggedVertex.Y = e.Y;
+                    polygon.UpdateEdges(-1);  // Aktualizacja krawêdzi
+                    polygon.ApplyConstraints(draggedVertexIndex);
                 }
 
-                polygon.UpdateEdges(-1);  // Aktualizacja krawêdzi
-                polygon.ApplyConstraints();
+
                 drawingPanel.Invalidate();
             }
 
@@ -219,7 +220,6 @@ namespace Gk1
 
                 lastMousePosition = e.Location;
                 polygon.UpdateEdges(-1);
-                polygon.ApplyConstraints();
                 drawingPanel.Invalidate();
                 return;
             }
@@ -271,24 +271,19 @@ namespace Gk1
             }
             return false;
         }
-        private void addVertexOnTheHalf(MouseEventArgs e)
+        private void addVertexOnTheHalf(int i)
         {
-            for (int i = 0; i < polygon.Edges.Count; i++)
-            {
-                Edge edge = polygon.Edges[i];
-                if (edge.IsPointNearEdge(new Point(e.X, e.Y),10))
-                {
-                    polygon.Edges[i].RemoveConstraint();
-                    Point mid = edge.MidPoint();
-                    Vertex newVertex = new Vertex(mid.X, mid.Y);
-                    polygon.Vertices.Insert(i + 1, newVertex); // Wstawiamy nowy wierzcho³ek miêdzy dwa istniej¹ce
-                    polygon.Edges.Insert(i + 1, new Edge(newVertex, edge.End));
-                    polygon.Edges[i].End = newVertex;
-                    polygon.UpdateEdges(-2); // Aktualizujemy krawêdzie
-                    drawingPanel.Invalidate();
-                    return;
-                }
-            }
+            Edge edge = polygon.Edges[i];
+            polygon.Edges[i].RemoveConstraint();
+            Point mid = edge.MidPoint();
+            Vertex newVertex = new Vertex(mid.X, mid.Y);
+            polygon.Vertices.Insert(i + 1, newVertex); // Wstawiamy nowy wierzcho³ek miêdzy dwa istniej¹ce
+            polygon.Edges.Insert(i + 1, new Edge(newVertex, edge.End));
+            polygon.Edges[i].End = newVertex;
+            polygon.UpdateEdges(-2); // Aktualizujemy krawêdzie
+            drawingPanel.Invalidate();
+            return;
+                
         }
 
 
@@ -333,7 +328,7 @@ namespace Gk1
             contextMenu.Items.Add("Set Vertical Constraint", null, (sender, args) => SetEdgeConstraint(polygon.Edges.IndexOf(edge), EdgeConstraint.Vertical));
             contextMenu.Items.Add("Set Fixed Length Constraint", null, (sender, args) => SetFixedLengthConstraint(polygon.Edges.IndexOf(edge)));
             contextMenu.Items.Add("Remove Constraint", null, (sender, args) => RemoveEdgeConstraint(polygon.Edges.IndexOf(edge)));
-
+            contextMenu.Items.Add("Add vertex", null, (sender, args) => addVertexOnTheHalf(polygon.Edges.IndexOf(edge)));
             if (edge.Constraint != EdgeConstraint.Bezier)
             {
                 contextMenu.Items.Add("Set Bezier", null, (sender, args) => SetBezierEdge(polygon.Edges.IndexOf(edge)));
@@ -372,7 +367,7 @@ namespace Gk1
             }
             else
             {
-                polygon.ApplyConstraints(); // Stosujemy ograniczenia na wszystkie krawêdzie
+                polygon.ApplyConstraints(edgeIndex); // Stosujemy ograniczenia na wszystkie krawêdzie
                 drawingPanel.Invalidate(); // Odœwie¿amy panel rysowania
             }
         }
@@ -391,7 +386,7 @@ namespace Gk1
                 {
                     polygon.Edges[edgeIndex].FixedLength = length;
                     polygon.SetEdgeConstraint(edgeIndex, EdgeConstraint.FixedLength);
-                    polygon.ApplyConstraints(); // Zastosuj ograniczenie
+                    polygon.ApplyConstraints(edgeIndex); // Zastosuj ograniczenie
                     drawingPanel.Invalidate(); // Odœwie¿ panel rysowania
                 }
             }
@@ -399,7 +394,7 @@ namespace Gk1
         private void RemoveEdgeConstraint(int edgeIndex)
         {
             polygon.RemoveEdgeConstraint(edgeIndex);
-            polygon.ApplyConstraints(); // Stosujemy zmiany
+            polygon.ApplyConstraints(edgeIndex); // Stosujemy zmiany
             drawingPanel.Invalidate(); // Odœwie¿amy panel rysowania
         }
         private void SetBezierEdge(int edgeIndex)
@@ -453,7 +448,7 @@ namespace Gk1
 
             polygon.ApplyContinuityConstraints(vertexIndex, newLocation);
             polygon.UpdateEdges(-1);  // Aktualizacja krawêdzi
-            polygon.ApplyConstraints();
+            polygon.ApplyConstraints(vertexIndex);
             drawingPanel.Invalidate();
         }
         

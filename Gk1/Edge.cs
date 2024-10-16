@@ -77,23 +77,6 @@ namespace Gk1
             return distanceToEdge < closeDistance;
         }
 
-
-        public void ApplyConstraint()
-        {
-            if(Constraint == EdgeConstraint.None) return;
-            if(Constraint == EdgeConstraint.Horizontal)
-            {
-                End.Y = Start.Y;
-            }
-            if(Constraint == EdgeConstraint.Vertical)
-            {
-                Start.X = End.X;
-            }
-            if(Constraint == EdgeConstraint.FixedLength && FixedLength.HasValue)
-            {
-                ScaleToFixedLength(FixedLength.Value);
-            }
-        }
         public bool SetConstraint(EdgeConstraint newConstraint, Edge previousEdge, Edge nextEdge)
         {
             if (newConstraint == EdgeConstraint.Horizontal && (previousEdge?.IsHorizontal() == true || nextEdge?.IsHorizontal() == true))
@@ -112,14 +95,22 @@ namespace Gk1
             Constraint = EdgeConstraint.None;
             FixedLength = null;
         }
-        private void ScaleToFixedLength(float newlength)
+        public void ScaleToFixedLength(float newlength,bool isStart)
         {
             double currentLength = Length();
             if (currentLength == 0) return;
             
             double scale = newlength / currentLength;
-            End.X = (int)(Start.X + (End.X - Start.X) * scale);
-            End.Y = (int)(Start.Y + (End.Y - Start.Y) * scale);
+            if (isStart)
+            {
+                Start.X = (int)(End.X - (End.X - Start.X) * scale);
+                Start.Y = (int)(End.Y - (End.Y - Start.Y) * scale);
+            }
+            else
+            {
+                End.X = (int)(Start.X + (End.X - Start.X) * scale);
+                End.Y = (int)(Start.Y + (End.Y - Start.Y) * scale);
+            }
         }
 
         public void Draw(Graphics g)
