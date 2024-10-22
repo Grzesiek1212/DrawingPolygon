@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms.VisualStyles;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Gk1
 {
@@ -49,7 +51,8 @@ namespace Gk1
             Edges.Clear();
             for (int i = 0; i < Vertices.Count - 1; i++)
             {
-                Edges.Add(new Edge(Vertices[i], Vertices[i + 1]));                      
+                Edges.Add(new Edge(Vertices[i], Vertices[i + 1]));
+
             }
             if (isclosed && Vertices.Count > 2)
             {
@@ -121,7 +124,7 @@ namespace Gk1
         public void ApplyConstraints(int index)
         {
             bool[] edgevisited = new bool[Edges.Count];
-            ApplyConstraint(Edges[index],false);
+            ApplyConstraint(Edges[index], false);
             edgevisited[index] = true;
             int i = Countposition(index-1);
             int j = Countposition(index + 1);
@@ -138,7 +141,7 @@ namespace Gk1
                     ApplyConstraint(Edges[j], false);
                 }
                 i = Countposition(i - 1);
-                j = Countposition(j + 1); ;
+                j = Countposition(j + 1);
             }
         }
         public void ClosePolygon()
@@ -149,8 +152,6 @@ namespace Gk1
                 UpdateEdges(-1);
             }
         }
-
-
         public bool IsPointInsidePolygon(Point point)
         {
             // Sprawdzenie, czy wielokąt jest zamknięty
@@ -228,15 +229,196 @@ namespace Gk1
         }
         private void PreserveG1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
         {
-            // TODO do napisania
+            // y = ax + b  
+            if (incomingEdge.Constraint == EdgeConstraint.Bezier && outgoingEdge.Constraint != EdgeConstraint.Bezier)
+            {
+                Point P3 = incomingEdge.ControlPoint2.ToPoint();
+                Point P4 = incomingEdge.End.ToPoint();
+                Point A = outgoingEdge.End.ToPoint();
+
+                // Odległość między P3 a P4
+                double distance = Vertex.Distance(incomingEdge.ControlPoint2, incomingEdge.End);
+
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną X (pionowa linia)
+                if (A.X == P4.X)
+                {
+                    // W tym przypadku prosta jest pionowa, więc nowy punkt przesuwamy tylko wzdłuż osi Y
+                    if (A.Y > P4.Y)
+                    {
+                        incomingEdge.ControlPoint2.X = P4.X; // współrzędna X się nie zmienia
+                        incomingEdge.ControlPoint2.Y = (int)(P4.Y - distance); // przesuwamy w dół
+                    }
+                    else
+                    {
+                        incomingEdge.ControlPoint2.X = P4.X;
+                        incomingEdge.ControlPoint2.Y = (int)(P4.Y + distance); // przesuwamy w górę
+                    }
+                }
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną Y (pozioma linia)
+                else if (A.Y == P4.Y)
+                {
+                    // W tym przypadku prosta jest pozioma, więc nowy punkt przesuwamy tylko wzdłuż osi X
+                    if (A.X > P4.X)
+                    {
+                        incomingEdge.ControlPoint2.X = (int)(P4.X - distance); // przesuwamy w lewo
+                        incomingEdge.ControlPoint2.Y = P4.Y; // współrzędna Y się nie zmienia
+                    }
+                    else
+                    {
+                        incomingEdge.ControlPoint2.X = (int)(P4.X + distance); // przesuwamy w prawo
+                        incomingEdge.ControlPoint2.Y = P4.Y;
+                    }
+                }
+                else
+                {
+                    // Wyznaczenie współczynników a i b prostej y = ax + b przechodzącej przez punkty P4 i A
+                    double a = (A.Y - P4.Y) / (A.X - P4.X);
+                    double b = P4.Y - a * P4.X;
+
+                    // Wektor kierunkowy między P4 i A
+                    double directionX = A.X - P4.X;
+                    double directionY = A.Y - P4.Y;
+
+                    // Normalizacja wektora (wektor jednostkowy)
+                    double length = Math.Sqrt(directionX * directionX + directionY * directionY);
+                    double unitDirectionX = directionX / length;
+                    double unitDirectionY = directionY / length;
+
+                    // Znalezienie punktu po przeciwnej stronie niż A, w odległości "distance" od P4
+                    // Wektory po przeciwnej stronie, zmieniamy znaki
+                    double newX = P4.X - unitDirectionX * distance;
+                    double newY = P4.Y - unitDirectionY * distance;
+
+                    // Ustawienie nowej lokalizacji dla newLocation (który może być np. nowym punktem kontrolnym)
+                    incomingEdge.ControlPoint2.X = (int)newX;
+                    incomingEdge.ControlPoint2.Y = (int)newY;
+                }
+            }
+
+            else if (incomingEdge.Constraint != EdgeConstraint.Bezier && outgoingEdge.Constraint == EdgeConstraint.Bezier)
+            {
+                Point P3 = outgoingEdge.ControlPoint1.ToPoint();
+                Point P4 = incomingEdge.End.ToPoint();
+                Point A = incomingEdge.Start.ToPoint();
+
+                // Odległość między P3 a P4
+                double distance = Vertex.Distance(incomingEdge.End, outgoingEdge.ControlPoint1);
+
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną X (pionowa linia)
+                if (A.X == P4.X)
+                {
+                    // W tym przypadku prosta jest pionowa, więc nowy punkt przesuwamy tylko wzdłuż osi Y
+                    if (A.Y > P4.Y)
+                    {
+                        outgoingEdge.ControlPoint1.X = P4.X; // współrzędna X się nie zmienia
+                        outgoingEdge.ControlPoint1.Y = (int)(P4.Y - distance); // przesuwamy w dół
+                    }
+                    else
+                    {
+                        outgoingEdge.ControlPoint1.X = P4.X;
+                        outgoingEdge.ControlPoint1.Y = (int)(P4.Y + distance); // przesuwamy w górę
+                    }
+                }
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną Y (pozioma linia)
+                else if (A.Y == P4.Y)
+                {
+                    // W tym przypadku prosta jest pozioma, więc nowy punkt przesuwamy tylko wzdłuż osi X
+                    if (A.X > P4.X)
+                    {
+                        outgoingEdge.ControlPoint1.X = (int)(P4.X - distance); // przesuwamy w lewo
+                        outgoingEdge.ControlPoint1.Y = P4.Y; // współrzędna Y się nie zmienia
+                    }
+                    else
+                    {
+                        outgoingEdge.ControlPoint1.X = (int)(P4.X + distance); // przesuwamy w prawo
+                        outgoingEdge.ControlPoint1.Y = P4.Y;
+                    }
+                }
+                else
+                {
+                    // Wyznaczenie współczynników a i b prostej y = ax + b przechodzącej przez punkty P4 i A
+                    double a = (A.Y - P4.Y) / (A.X - P4.X);
+                    double b = P4.Y - a * P4.X;
+
+                    // Wektor kierunkowy między P4 i A
+                    double directionX = A.X - P4.X;
+                    double directionY = A.Y - P4.Y;
+
+                    // Normalizacja wektora (wektor jednostkowy)
+                    double length = Math.Sqrt(directionX * directionX + directionY * directionY);
+                    double unitDirectionX = directionX / length;
+                    double unitDirectionY = directionY / length;
+
+                    // Znalezienie punktu po przeciwnej stronie niż A, w odległości "distance" od P4
+                    // Wektory po przeciwnej stronie, zmieniamy znaki
+                    double newX = P4.X - unitDirectionX * distance;
+                    double newY = P4.Y - unitDirectionY * distance;
+
+                    // Ustawienie nowej lokalizacji dla newLocation (który może być np. nowym punktem kontrolnym)
+                    outgoingEdge.ControlPoint1.X = (int)newX;
+                    outgoingEdge.ControlPoint1.Y = (int)newY;
+                }
+            }
+
+            else if (incomingEdge.Constraint == EdgeConstraint.Bezier && outgoingEdge.Constraint == EdgeConstraint.Bezier)
+            {
+                Point P3 = incomingEdge.ControlPoint2.ToPoint();
+                Point P4 = incomingEdge.End.ToPoint();
+                Point A = outgoingEdge.ControlPoint1.ToPoint();
+
+                double distance = Vertex.Distance(incomingEdge.ControlPoint2, incomingEdge.End);
+
+                if (A.X == P4.X)
+                {
+                    if (A.Y > P4.Y)
+                    {
+                        incomingEdge.ControlPoint2.X = P4.X;
+                        incomingEdge.ControlPoint2.Y = (int)(P4.Y - distance);
+                    }
+                    else
+                    {
+                        incomingEdge.ControlPoint2.X = P4.X;
+                        incomingEdge.ControlPoint2.Y = (int)(P4.Y + distance);
+                    }
+                }
+                else if (A.Y == P4.Y)
+                {
+                    if (A.X > P4.X)
+                    {
+                        incomingEdge.ControlPoint2.X = (int)(P4.X - distance);
+                        incomingEdge.ControlPoint2.Y = P4.Y;
+                    }
+                    else
+                    {
+                        incomingEdge.ControlPoint2.X = (int)(P4.X + distance);
+                        incomingEdge.ControlPoint2.Y = P4.Y;
+                    }
+                }
+                else
+                {
+                    double a = (A.Y - P4.Y) / (A.X - P4.X);
+                    double b = P4.Y - a * P4.X;
+
+                    double directionX = A.X - P4.X;
+                    double directionY = A.Y - P4.Y;
+
+                    double length = Math.Sqrt(directionX * directionX + directionY * directionY);
+                    double unitDirectionX = directionX / length;
+                    double unitDirectionY = directionY / length;
+
+                    double newX = P4.X - unitDirectionX * distance;
+                    double newY = P4.Y - unitDirectionY * distance;
+
+                    incomingEdge.ControlPoint2.X = (int)newX;
+                    incomingEdge.ControlPoint2.Y = (int)newY;
+                }
+            }
         }
-
-
-
         private void PreserveC1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
         {
             // Aktualizujemy początek outgoingEdge na nową lokalizację
             outgoingEdge.Start = ToVertex(newLocation);
+            outgoingEdge.Start.Continuity = ContinuityType.C1;
 
             // Sprawdzenie, czy incomingEdge jest krzywą Béziera
             if (incomingEdge.Constraint == EdgeConstraint.Bezier)
@@ -314,11 +496,6 @@ namespace Gk1
         {
             return new Vertex(p.X, p.Y);
         }
-        private double CalculateVectorLength(Point p)
-        {
-            return Math.Sqrt(p.X * p.X + p.Y * p.Y);
-        }
-
         public void ApplyConstraint(Edge edge,bool isStart)
         {
             if (edge.Constraint == EdgeConstraint.None) return;
@@ -341,17 +518,404 @@ namespace Gk1
                 else ApplyContinuityConstraints(index+1, Edges[Countposition(index + 1)].Start.ToPoint());
             }
         }
-
         public int Countposition(int index)
         {
             if(index >= Edges.Count) return index%Edges.Count;
             if(index < 0) return (index + Edges.Count)%Edges.Count;
             return index;
         }
-        private Point NormalizeVector(Point vector)
+
+        public void UpdateEdgesControlPoint(Edge draggedBezierEdge,int ind)
         {
-            double length = CalculateVectorLength(vector);
-            return new Point((int)(vector.X / length), (int)(vector.Y / length));
+            int index = 0;
+            while (Edges[index] != draggedBezierEdge) { index++; }
+
+            if(ind == 1 && draggedBezierEdge.Start.Continuity != ContinuityType.G1 && draggedBezierEdge.Start.Continuity != ContinuityType.C1)
+            {
+                ApplyConstraints(index);
+                return;
+            }
+            if (ind == 2 && draggedBezierEdge.End.Continuity != ContinuityType.G1 && draggedBezierEdge.End.Continuity != ContinuityType.C1)
+            {
+                ApplyConstraints(index);
+                return;
+            }
+            bool[] edgevisited = new bool[Edges.Count];
+            edgevisited[index] = true;
+
+            if (ind == 1)
+            {
+                upgradebycontrol(Edges[index - 1], draggedBezierEdge);
+                edgevisited[index-1] = true;
+            }
+            else
+            {
+                upgradebycontrol(Edges[index + 1], draggedBezierEdge);
+                edgevisited[index + 1] = true;
+            }
+
+            
+            int i = Countposition(index - 1);
+            int j = Countposition(index + 1);
+            while (edgevisited[i] == false || edgevisited[j] == false)
+            {
+                if (edgevisited[i] == false)
+                {
+                    edgevisited[i] = true;
+                    ApplyConstraint(Edges[i], true);
+                }
+                if (edgevisited[j] == false)
+                {
+                    edgevisited[j] = true;
+                    ApplyConstraint(Edges[j], false);
+                }
+                i = Countposition(i - 1);
+                j = Countposition(j + 1); 
+            }
+        }
+
+        private void upgradebycontrol(Edge edge, Edge edgeWithControl)
+        {
+            Point controlpoint,point,opposedpoint;
+            ContinuityType remberpoint, remberopposedpoint;
+
+            if (edge.End.X == edgeWithControl.Start.X && edge.End.Y == edgeWithControl.Start.Y)
+            {
+                controlpoint = edgeWithControl.ControlPoint1.ToPoint();
+                point = edge.End.ToPoint();
+                remberpoint = edge.End.Continuity;
+                opposedpoint = edge.Start.ToPoint();
+                remberopposedpoint = edge.Start.Continuity;
+                
+            }
+            else
+            {
+                controlpoint = edgeWithControl.ControlPoint2.ToPoint();
+                point = edge.Start.ToPoint();
+                remberpoint = edge.Start.Continuity;
+                opposedpoint = edge.End.ToPoint();
+                remberopposedpoint = edge.End.Continuity;
+            }
+
+            if(edge.Constraint == EdgeConstraint.None)
+            {
+                Point P3 = opposedpoint;
+                Point P4 = point;
+                Point A = controlpoint;
+
+                // Odległość między P3 a P4
+                
+                double distance = (double)Vertex.Distance(ToVertex(P3),ToVertex(P4));
+                if (remberpoint == ContinuityType.C1)
+                {
+                    distance = 3 * (double)Vertex.Distance(ToVertex(A), ToVertex(P4));
+                }
+
+                    // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną X (pionowa linia)
+                    if (A.X == P4.X)
+                {
+                    // W tym przypadku prosta jest pionowa, więc nowy punkt przesuwamy tylko wzdłuż osi Y
+                    if (A.Y > P4.Y)
+                    {
+                        opposedpoint.X = P4.X; // współrzędna X się nie zmienia
+                        opposedpoint.Y = (int)(P4.Y - distance); // przesuwamy w dół
+                    }
+                    else
+                    {
+                        opposedpoint.X = P4.X;
+                        opposedpoint.Y = (int)(P4.Y + distance); // przesuwamy w górę
+                    }
+                }
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną Y (pozioma linia)
+                else if (A.Y == P4.Y)
+                {
+                    // W tym przypadku prosta jest pozioma, więc nowy punkt przesuwamy tylko wzdłuż osi X
+                    if (A.X > P4.X)
+                    {
+                        opposedpoint.X = (int)(P4.X - distance); // przesuwamy w lewo
+                        opposedpoint.Y = P4.Y; // współrzędna Y się nie zmienia
+                    }
+                    else
+                    {
+                        opposedpoint.X = (int)(P4.X + distance); // przesuwamy w prawo
+                        opposedpoint.Y = P4.Y;
+                    }
+                }
+                else
+                {
+                    // Wyznaczenie współczynników a i b prostej y = ax + b przechodzącej przez punkty P4 i A
+                    double a = (A.Y - P4.Y) / (A.X - P4.X);
+                    double b = P4.Y - a * P4.X;
+
+                    // Wektor kierunkowy między P4 i A
+                    double directionX = A.X - P4.X;
+                    double directionY = A.Y - P4.Y;
+
+                    // Normalizacja wektora (wektor jednostkowy)
+                    double length = Math.Sqrt(directionX * directionX + directionY * directionY);
+                    double unitDirectionX = directionX / length;
+                    double unitDirectionY = directionY / length;
+
+                    // Znalezienie punktu po przeciwnej stronie niż A, w odległości "distance" od P4
+                    double newX = P4.X - unitDirectionX * distance;
+                    double newY = P4.Y - unitDirectionY * distance;
+
+                    // Ustawienie nowej lokalizacji dla opposedpoint
+                    opposedpoint.X = (int)newX;
+                    opposedpoint.Y = (int)newY;
+
+                   
+                }
+            }
+
+            if (edge.Constraint == EdgeConstraint.Horizontal)
+            {
+                controlpoint.Y = point.Y; 
+            }
+            if (edge.Constraint == EdgeConstraint.Vertical)
+            {
+                controlpoint.X = point.X;
+            }
+            if (edge.Constraint == EdgeConstraint.FixedLength)
+            {
+                Point P3 = opposedpoint;
+                Point P4 = point;
+                Point A = controlpoint;
+
+                // Odległość między P3 a P4
+                double distance = (double)edge.FixedLength;
+
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną X (pionowa linia)
+                if (A.X == P4.X)
+                {
+                    // W tym przypadku prosta jest pionowa, więc nowy punkt przesuwamy tylko wzdłuż osi Y
+                    if (A.Y > P4.Y)
+                    {
+                        opposedpoint.X = P4.X; // współrzędna X się nie zmienia
+                        opposedpoint.Y = (int)(P4.Y - distance); // przesuwamy w dół
+                    }
+                    else
+                    {
+                        opposedpoint.X = P4.X;
+                        opposedpoint.Y = (int)(P4.Y + distance); // przesuwamy w górę
+                    }
+                }
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną Y (pozioma linia)
+                else if (A.Y == P4.Y)
+                {
+                    // W tym przypadku prosta jest pozioma, więc nowy punkt przesuwamy tylko wzdłuż osi X
+                    if (A.X > P4.X)
+                    {
+                        opposedpoint.X = (int)(P4.X - distance); // przesuwamy w lewo
+                        opposedpoint.Y = P4.Y; // współrzędna Y się nie zmienia
+                    }
+                    else
+                    {
+                        opposedpoint.X = (int)(P4.X + distance); // przesuwamy w prawo
+                        opposedpoint.Y = P4.Y;
+                    }
+                }
+                else
+                {
+                    // Wyznaczenie współczynników a i b prostej y = ax + b przechodzącej przez punkty P4 i A
+                    double a = (A.Y - P4.Y) / (A.X - P4.X);
+                    double b = P4.Y - a * P4.X;
+
+                    // Wektor kierunkowy między P4 i A
+                    double directionX = A.X - P4.X;
+                    double directionY = A.Y - P4.Y;
+
+                    // Normalizacja wektora (wektor jednostkowy)
+                    double length = Math.Sqrt(directionX * directionX + directionY * directionY);
+                    double unitDirectionX = directionX / length;
+                    double unitDirectionY = directionY / length;
+
+                    // Znalezienie punktu po przeciwnej stronie niż A, w odległości "distance" od P4
+                    double newX = P4.X - unitDirectionX * distance;
+                    double newY = P4.Y - unitDirectionY * distance;
+
+                    // Ustawienie nowej lokalizacji dla opposedpoint
+                    opposedpoint.X = (int)newX;
+                    opposedpoint.Y = (int)newY;
+
+                    if (remberpoint == ContinuityType.C1)
+                    {
+                        // Wektor kierunkowy między P4 (point) i opposedpoint
+                        double directionX_C1 = opposedpoint.X - P4.X;
+                        double directionY_C1 = opposedpoint.Y - P4.Y;
+
+                        // Normalizacja wektora (wektor jednostkowy)
+                        double length_C1 = Math.Sqrt(directionX_C1 * directionX_C1 + directionY_C1 * directionY_C1);
+                        double unitDirectionX_C1 = directionX_C1 / length_C1;
+                        double unitDirectionY_C1 = directionY_C1 / length_C1;
+
+                        // Odległość między P4 a controlpoint musi być 1/3 długości distance
+                        double controlDistance = distance / 3.0;
+
+                        // Nowe współrzędne controlPoint (wzdłuż tego samego wektora kierunkowego)
+                        double controlX = P4.X - unitDirectionX_C1 * controlDistance;
+                        double controlY = P4.Y - unitDirectionY_C1 * controlDistance;
+
+                        // Ustawienie nowej lokalizacji dla controlPoint
+                        controlpoint.X = (int)controlX;
+                        controlpoint.Y = (int)controlY;
+                    }
+                }
+            }
+
+            if (edge.Constraint == EdgeConstraint.Bezier)
+            {
+                // Wyznaczenie opposedpoint, w zależności od położenia kontrolnych punktów krzywej
+                _ = edge.End == edgeWithControl.Start ? opposedpoint = edge.ControlPoint2.ToPoint() : opposedpoint = edge.ControlPoint1.ToPoint();
+
+                Point P3 = opposedpoint;
+                Point P4 = point;
+                Point A = controlpoint;
+
+                // Odległość między P3 a P4
+                double distance = Vertex.Distance(ToVertex(P3), ToVertex(P4));
+
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną X (pionowa linia)
+                if (A.X == P4.X)
+                {
+                    // Prosta pionowa, przesunięcie wzdłuż osi Y
+                    if (A.Y > P4.Y)
+                    {
+                        opposedpoint.X = P4.X; // współrzędna X się nie zmienia
+                        opposedpoint.Y = (int)(P4.Y - distance); // przesuwamy w dół
+                    }
+                    else
+                    {
+                        opposedpoint.X = P4.X;
+                        opposedpoint.Y = (int)(P4.Y + distance); // przesuwamy w górę
+                    }
+                }
+                // Sprawdzenie, czy punkty P4 i A mają tę samą współrzędną Y (pozioma linia)
+                else if (A.Y == P4.Y)
+                {
+                    // Prosta pozioma, przesunięcie wzdłuż osi X
+                    if (A.X > P4.X)
+                    {
+                        opposedpoint.X = (int)(P4.X - distance); // przesuwamy w lewo
+                        opposedpoint.Y = P4.Y; // współrzędna Y się nie zmienia
+                    }
+                    else
+                    {
+                        opposedpoint.X = (int)(P4.X + distance); // przesuwamy w prawo
+                        opposedpoint.Y = P4.Y;
+                    }
+                }
+                else
+                {
+                    // Wyznaczenie współczynników a i b prostej y = ax + b przechodzącej przez punkty P4 i A
+                    double a = (A.Y - P4.Y) / (A.X - P4.X);
+                    double b = P4.Y - a * P4.X;
+
+                    // Wektor kierunkowy między P4 i A
+                    double directionX = A.X - P4.X;
+                    double directionY = A.Y - P4.Y;
+
+                    // Normalizacja wektora (wektor jednostkowy)
+                    double length = Math.Sqrt(directionX * directionX + directionY * directionY);
+                    double unitDirectionX = directionX / length;
+                    double unitDirectionY = directionY / length;
+
+                    // Znalezienie punktu po przeciwnej stronie niż A, w odległości "distance" od P4
+                    double newX = P4.X - unitDirectionX * distance;
+                    double newY = P4.Y - unitDirectionY * distance;
+
+                    // Ustawienie nowej lokalizacji dla opposedpoint
+                    opposedpoint.X = (int)newX;
+                    opposedpoint.Y = (int)newY;
+                }
+            }
+
+
+
+            if (remberpoint == ContinuityType.C1 && edge.Constraint != EdgeConstraint.FixedLength)
+            {
+                // Obliczenie aktualnej odległości między point a controlpoint
+                double currentControlDistanceX = controlpoint.X - point.X;
+                double currentControlDistanceY = controlpoint.Y - point.Y;
+
+                // Obliczenie długości wektora point -> controlpoint (odległość między point a controlpoint)
+                double controlDistance = Math.Sqrt(currentControlDistanceX * currentControlDistanceX + currentControlDistanceY * currentControlDistanceY);
+
+                // Odległość między point a opposedpoint powinna być 3 razy większa niż odległość point -> controlpoint
+                double targetOpposedDistance = controlDistance * 3.0;
+                if(edge.Constraint == EdgeConstraint.Bezier) { targetOpposedDistance = controlDistance; }
+
+                // Obliczenie aktualnej odległości między point a opposedpoint
+                double currentOpposedDistanceX = opposedpoint.X - point.X;
+                double currentOpposedDistanceY = opposedpoint.Y - point.Y;
+
+                // Normalizacja wektora między point a opposedpoint (wektor jednostkowy)
+                double lengthOpposed = Math.Sqrt(currentOpposedDistanceX * currentOpposedDistanceX + currentOpposedDistanceY * currentOpposedDistanceY);
+                double unitDirectionX_Opposed = currentOpposedDistanceX / lengthOpposed;
+                double unitDirectionY_Opposed = currentOpposedDistanceY / lengthOpposed;
+
+                // Nowe współrzędne dla opposedpoint, tak aby odległość była 3 razy większa
+                double newOpposedX = point.X + unitDirectionX_Opposed * targetOpposedDistance;
+                double newOpposedY = point.Y + unitDirectionY_Opposed * targetOpposedDistance;
+
+                // Ustawienie nowych współrzędnych dla opposedpoint
+                opposedpoint.X = (int)newOpposedX;
+                opposedpoint.Y = (int)newOpposedY;
+            }
+
+            if (edge.End.X == edgeWithControl.Start.X && edge.End.Y == edgeWithControl.Start.Y)
+            {
+                edgeWithControl.ControlPoint1 = ToVertex(controlpoint);
+                edge.End = ToVertex(point);
+                edge.End.Continuity = remberpoint;
+                if (edge.Constraint != EdgeConstraint.Bezier)
+                {
+                    edge.Start = ToVertex(opposedpoint);
+                    edge.Start.Continuity = remberopposedpoint;
+                    Edges[Edges.IndexOf(edge) - 1].End = edge.Start;
+                    Vertices[Edges.IndexOf(edge)] = edge.Start;
+                }
+
+            }
+            else
+            {
+                edgeWithControl.ControlPoint2 = ToVertex(controlpoint);
+                edge.Start = ToVertex(point);
+                edge.Start.Continuity = remberpoint;
+                if (edge.Constraint != EdgeConstraint.Bezier)
+                {
+                    edge.End = ToVertex(opposedpoint);
+                    edge.End.Continuity = remberopposedpoint;
+                    Edges[Edges.IndexOf(edge) + 1].Start = edge.End;
+                    Vertices[Edges.IndexOf(edge) + 1] = edge.End;
+                }
+            }
+
+            if (edge.Constraint == EdgeConstraint.Bezier)
+            {
+                if (edge.End.X == edgeWithControl.Start.X && edge.End.Y == edgeWithControl.Start.Y)
+                {
+                    edge.ControlPoint2 = ToVertex(opposedpoint);
+                }
+                else
+                {
+                    edge.ControlPoint1 = ToVertex(opposedpoint);
+                }
+            }
+            else
+            {
+                if (edge.End.X == edgeWithControl.Start.X && edge.End.Y == edgeWithControl.Start.Y)
+                {
+                     edge.Start = ToVertex(opposedpoint);
+                }
+                else
+                {
+                    edge.End = ToVertex(opposedpoint);
+                }
+            }
+
+            
+
         }
     }
 }

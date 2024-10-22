@@ -79,6 +79,8 @@ namespace Gk1
                             draggingControlPoint = true;
                             draggedControlPointIndex = 1;
                             draggedBezierEdge = edge;
+                            draggedBezierEdge.Start.Continuity = edge.Start.Continuity;
+                            draggedBezierEdge.End.Continuity = edge.End.Continuity;
                             return;
                         }
 
@@ -87,6 +89,8 @@ namespace Gk1
                             draggingControlPoint = true;
                             draggedControlPointIndex = 2;
                             draggedBezierEdge = edge;
+                            draggedBezierEdge.Start.Continuity = edge.Start.Continuity;
+                            draggedBezierEdge.End.Continuity = edge.End.Continuity;
                             return;
                         }
                     }
@@ -232,11 +236,13 @@ namespace Gk1
                     
                     draggedBezierEdge.ControlPoint1.X = e.X;
                     draggedBezierEdge.ControlPoint1.Y = e.Y;
+                    polygon.UpdateEdgesControlPoint(draggedBezierEdge,draggedControlPointIndex);
                 }
                 else if (draggedControlPointIndex == 2)
                 {
                     draggedBezierEdge.ControlPoint2.X = e.X;
                     draggedBezierEdge.ControlPoint2.Y = e.Y;
+                    polygon.UpdateEdgesControlPoint(draggedBezierEdge, draggedControlPointIndex);
                 }
 
                 drawingPanel.Invalidate();

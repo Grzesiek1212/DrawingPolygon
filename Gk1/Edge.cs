@@ -150,12 +150,46 @@ namespace Gk1
 
         private void DrawBezier(Graphics g)
         {
-            // Rysowanie krzywej Béziera
-            using (Pen pen = new Pen(Color.Blue, 2))
+            // Pobranie punktów kontrolnych P1, P2, P3, P4
+            Vertex P1 = Start;
+            Vertex P2 = ControlPoint1;
+            Vertex P3 = ControlPoint2;
+            Vertex P4 = End;
+
+            // Obliczenie współczynników A0, A1, A2, A3
+            Vertex A0 = P1;
+            Vertex A1 = new Vertex(3 * (P2.X - P1.X), 3 * (P2.Y - P1.Y));
+            Vertex A2 = new Vertex(3 * (P3.X - 2 * P2.X + P1.X), 3 * (P3.Y - 2 * P2.Y + P1.Y));
+            Vertex A3 = new Vertex(P4.X - 3 * P3.X + 3 * P2.X - P1.X, P4.Y - 3 * P3.Y + 3 * P2.Y - P1.Y);
+
+            // Liczba punktów do narysowania na krzywej
+            int segments = 100;
+            float step = 1.0f / segments;
+
+            Vertex prevPoint = P1; // Zaczynamy od P1
+
+            for (int i = 1; i <= segments; i++)
             {
-                g.DrawBezier(pen, Start.ToPoint(), ControlPoint1.ToPoint(), ControlPoint2.ToPoint(), End.ToPoint());
+                // Obliczenie wartości t w zakresie od 0 do 1
+                float t = i * step;
+
+                // Obliczenie współrzędnych punktu na krzywej Béziera dla danego t
+                float t2 = t * t;
+                float t3 = t2 * t;
+
+                float x = A3.X * t3 + A2.X * t2 + A1.X * t + A0.X;
+                float y = A3.Y * t3 + A2.Y * t2 + A1.Y * t + A0.Y;
+
+                Vertex currentPoint = new Vertex((int)x, (int)y);
+
+                // Rysowanie linii pomiędzy poprzednim a bieżącym punktem
+                DrawBresenhamLine(g, prevPoint, currentPoint, Color.Blue);
+
+                // Ustawienie bieżącego punktu jako poprzedni
+                prevPoint = currentPoint;
             }
         }
+
 
         public void DrawBresenhamLine(Graphics g, Vertex a, Vertex b,Color color)
         {
