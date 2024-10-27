@@ -64,12 +64,7 @@ namespace Gk1
             {
                 for(int i = 0;i < OldEdges.Count;i++)
                 {
-                    Edges[i].Constraint = OldEdges[i].Constraint;
-                    Edges[i].FixedLength = OldEdges[i].FixedLength;
-                    Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
-                    Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
-                    Edges[i].StartContinuity = OldEdges[i].StartContinuity;
-                    Edges[i].EndContinuity = OldEdges[i].EndContinuity;
+                    copyRelationBeetweenEdges(Edges[i], OldEdges[i]);
                 }
             }
             else if(OldEdges.Count -1 == Edges.Count)
@@ -79,22 +74,12 @@ namespace Gk1
                 {
                     if (i < index - 1)
                     {
-                        Edges[i].Constraint = OldEdges[i].Constraint;
-                        Edges[i].FixedLength = OldEdges[i].FixedLength;
-                        Edges[i].ControlPoint1 = OldEdges[i].ControlPoint1;
-                        Edges[i].ControlPoint2 = OldEdges[i].ControlPoint2;
-                        Edges[i].StartContinuity = OldEdges[i].StartContinuity;
-                        Edges[i].EndContinuity = OldEdges[i].EndContinuity;
+                        copyRelationBeetweenEdges(Edges[i], OldEdges[i]);
                     }
                     else if (i == index - 1) continue;
                     else
                     {
-                        Edges[i].Constraint = OldEdges[j].Constraint;
-                        Edges[i].FixedLength = OldEdges[j].FixedLength;
-                        Edges[i].ControlPoint1 = OldEdges[j].ControlPoint1;
-                        Edges[i].ControlPoint2 = OldEdges[j].ControlPoint2;
-                        Edges[i].StartContinuity = OldEdges[j].StartContinuity;
-                        Edges[i].EndContinuity = OldEdges[j].EndContinuity;
+                        copyRelationBeetweenEdges(Edges[i], OldEdges[j]);
                         j++;
                     }
                 }
@@ -102,6 +87,15 @@ namespace Gk1
                 
             }
            
+        }
+        private void copyRelationBeetweenEdges(Edge edgenew, Edge edgeold)
+        {
+            edgenew.Constraint = edgeold.Constraint;
+            edgenew.FixedLength = edgeold.FixedLength;
+            edgenew.ControlPoint1 = edgeold.ControlPoint1;
+            edgenew.ControlPoint2 = edgeold.ControlPoint2;
+            edgenew.StartContinuity = edgeold.StartContinuity;
+            edgenew.EndContinuity = edgeold.EndContinuity;
         }
         public bool SetEdgeConstraint(int edgeIndex, EdgeConstraint constraint)
         {
@@ -112,8 +106,6 @@ namespace Gk1
 
             return Edges[edgeIndex].SetConstraint(constraint, previousEdge, nextEdge);
         }
-
-        // Usuwanie ograniczenia z wybranej krawędzi
         public void RemoveEdgeConstraint(int edgeIndex)
         {
             if (edgeIndex >= 0 && edgeIndex < Edges.Count)
@@ -202,7 +194,6 @@ namespace Gk1
             return false;
         }
 
-        
         // funkcje do ustawiania relacji na wierchołku
         public void ApplyContinuityConstraints(int vertexIndex, Point newLocation)
         {
@@ -210,8 +201,8 @@ namespace Gk1
             var incomingEdge = GetIncomingEdge(vertexIndex);
             var outgoingEdge = GetOutgoingEdge(vertexIndex);
             if (incomingEdge == null && outgoingEdge == null) return;
-            if(incomingEdge == null && outgoingEdge != null) incomingEdge = Edges[Edges.IndexOf(outgoingEdge)-1];
-            if (incomingEdge != null && outgoingEdge == null) outgoingEdge = Edges[Edges.IndexOf(incomingEdge) + 1];
+            if(incomingEdge == null && outgoingEdge != null) incomingEdge = Edges[Countposition(Edges.IndexOf(outgoingEdge)-1)];
+            if (incomingEdge != null && outgoingEdge == null) outgoingEdge = Edges[Countposition(Edges.IndexOf(incomingEdge) + 1)];
 
             if (vertex.Continuity == ContinuityType.G1)
             {
@@ -229,7 +220,6 @@ namespace Gk1
         }
         private void PreserveG1Continuity(Edge incomingEdge, Edge outgoingEdge, Point newLocation)
         {
-            // y = ax + b  
             if (incomingEdge.Constraint == EdgeConstraint.Bezier && outgoingEdge.Constraint != EdgeConstraint.Bezier)
             {
                 Point P3 = incomingEdge.ControlPoint2.ToPoint();
@@ -515,7 +505,7 @@ namespace Gk1
             {
                 int index = Edges.IndexOf(edge);
                 if (!isStart) ApplyContinuityConstraints(index, Edges[Countposition(index-1)].End.ToPoint());
-                else ApplyContinuityConstraints(index+1, Edges[Countposition(index + 1)].Start.ToPoint());
+                else ApplyContinuityConstraints(Countposition(index+1), Edges[Countposition(index + 1)].Start.ToPoint());
             }
         }
         public int Countposition(int index)
@@ -524,7 +514,6 @@ namespace Gk1
             if(index < 0) return (index + Edges.Count)%Edges.Count;
             return index;
         }
-
         public void UpdateEdgesControlPoint(Edge draggedBezierEdge,int ind)
         {
             int index = 0;
@@ -542,21 +531,21 @@ namespace Gk1
             }
             bool[] edgevisited = new bool[Edges.Count];
             edgevisited[index] = true;
+            int i = Countposition(index - 1);
+            int j = Countposition(index + 1);
 
             if (ind == 1)
             {
-                upgradebycontrol(Edges[index - 1], draggedBezierEdge);
-                edgevisited[index-1] = true;
+                upgradebycontrol(Edges[i], draggedBezierEdge);
+                edgevisited[i] = true;
             }
             else
             {
-                upgradebycontrol(Edges[index + 1], draggedBezierEdge);
-                edgevisited[index + 1] = true;
+                upgradebycontrol(Edges[j], draggedBezierEdge);
+                edgevisited[j] = true;
             }
 
             
-            int i = Countposition(index - 1);
-            int j = Countposition(index + 1);
             while (edgevisited[i] == false || edgevisited[j] == false)
             {
                 if (edgevisited[i] == false)
@@ -573,7 +562,6 @@ namespace Gk1
                 j = Countposition(j + 1); 
             }
         }
-
         private void upgradebycontrol(Edge edge, Edge edgeWithControl)
         {
             Point controlpoint,point,opposedpoint;
@@ -872,8 +860,8 @@ namespace Gk1
                 {
                     edge.Start = ToVertex(opposedpoint);
                     edge.Start.Continuity = remberopposedpoint;
-                    Edges[Edges.IndexOf(edge) - 1].End = edge.Start;
-                    Vertices[Edges.IndexOf(edge)] = edge.Start;
+                    Edges[Countposition(Edges.IndexOf(edge) - 1)].End = edge.Start;
+                    Vertices[Countposition(Edges.IndexOf(edge))] = edge.Start;
                 }
 
             }
@@ -886,8 +874,8 @@ namespace Gk1
                 {
                     edge.End = ToVertex(opposedpoint);
                     edge.End.Continuity = remberopposedpoint;
-                    Edges[Edges.IndexOf(edge) + 1].Start = edge.End;
-                    Vertices[Edges.IndexOf(edge) + 1] = edge.End;
+                    Edges[Countposition(Edges.IndexOf(edge) + 1)].Start = edge.End;
+                    Vertices[Countposition(Edges.IndexOf(edge) + 1)] = edge.End;
                 }
             }
 
@@ -907,10 +895,12 @@ namespace Gk1
                 if (edge.End.X == edgeWithControl.Start.X && edge.End.Y == edgeWithControl.Start.Y)
                 {
                      edge.Start = ToVertex(opposedpoint);
+                     edge.Start.Continuity = remberopposedpoint;
                 }
                 else
                 {
                     edge.End = ToVertex(opposedpoint);
+                    edge.End.Continuity = remberopposedpoint;
                 }
             }
 
