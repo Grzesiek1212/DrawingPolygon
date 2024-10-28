@@ -335,6 +335,7 @@ namespace Gk1
             contextMenu.Items.Add("Set Fixed Length Constraint", null, (sender, args) => SetFixedLengthConstraint(polygon.Edges.IndexOf(edge)));
             contextMenu.Items.Add("Remove Constraint", null, (sender, args) => RemoveEdgeConstraint(polygon.Edges.IndexOf(edge)));
             contextMenu.Items.Add("Add vertex", null, (sender, args) => addVertexOnTheHalf(polygon.Edges.IndexOf(edge)));
+            contextMenu.Items.Add("Add half circle", null, (sender, args) => SetHalfCircle(polygon.Edges.IndexOf(edge)));
             if (edge.Constraint != EdgeConstraint.Bezier)
             {
                 contextMenu.Items.Add("Set Bezier", null, (sender, args) => SetBezierEdge(polygon.Edges.IndexOf(edge)));
@@ -346,6 +347,13 @@ namespace Gk1
 
             contextMenu.Show(drawingPanel, new Point(e.X, e.Y));
         }
+
+        public void SetHalfCircle(int v)
+        {
+            polygon.Edges[v].Constraint = EdgeConstraint.HalfCircle;
+            drawingPanel.Invalidate();
+        }
+
         private void ShowVertexContextMenu(MouseEventArgs e, int vertexIndex)
         {
             ContextMenuStrip contextMenu = new ContextMenuStrip();

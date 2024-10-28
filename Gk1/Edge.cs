@@ -12,7 +12,8 @@ namespace Gk1
         Horizontal,
         Vertical,
         FixedLength,
-        Bezier
+        Bezier,
+        HalfCircle
     }
     public class Edge
     {
@@ -128,9 +129,13 @@ namespace Gk1
                 case EdgeConstraint.FixedLength:
                     color = Color.Red; // Kolor dla stałej długości
                     break;
+                case EdgeConstraint.HalfCircle:
+                    DrawHalfCircle(g);
+                    return;
                 case EdgeConstraint.Bezier:
                     DrawBezier(g); // Rysowanie krzywej Béziera
                     return; // Zakończ metodę, gdy rysujemy Béziera
+                
             }
 
             // Rysowanie linii dla krawędzi
@@ -147,6 +152,34 @@ namespace Gk1
                 g.FillEllipse(Brushes.Blue, ControlPoint2.X - 3, ControlPoint2.Y - 3, 6, 6); // Punkt kontrolny 2
             }
         }
+
+        private void DrawHalfCircle(Graphics g)
+        {
+            Point midpoint = MidPoint();
+            double radius = Vertex.Distance(Start, End) / 2;
+
+            double startAngle = Math.Atan2(End.Y - Start.Y, End.X - Start.X);                
+            double endAngle = Math.Atan2(Start.Y - End.Y, Start.X - End.X);
+
+            int segments = 100;
+            for (int i = 0; i <= segments; i++)
+            {
+                double t = i / (double)segments;
+                double currentAngle = startAngle + t * (endAngle - startAngle);
+
+                int x1 = (int)(midpoint.X + radius * Math.Cos(startAngle + (t - 1.0 / segments) * (endAngle - startAngle)));
+                int y1 = (int)(midpoint.Y + radius * Math.Sin(startAngle + (t - 1.0 / segments) * (endAngle - startAngle)));
+                int x2 = midpoint.X + (int)(radius * Math.Cos(currentAngle));
+                int y2 = midpoint.Y + (int)(radius * Math.Sin(currentAngle));
+
+                Vertex prevPoint = new Vertex(x1, y1);
+                Vertex currentPoint = new Vertex(x2, y2);
+
+                DrawBresenhamLine(g, prevPoint, currentPoint, Color.Purple);
+            }
+        }
+
+
 
         private void DrawBezier(Graphics g)
         {
